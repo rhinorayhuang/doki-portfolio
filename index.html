@@ -327,10 +327,25 @@
         video.currentTime = 0;
 
         const duration = video.duration || 1;
-        const playhead = { time: 0 };
-        const seekVideo = () => {
-          if (video.readyState > 0) video.currentTime = playhead.time;
+        const playhead = {
+          current: 0,
+          target: 0,
+          lastSeek: 0,
         };
+
+        gsap.ticker.add(() => {
+          if (video.readyState === 0) return;
+
+          playhead.current += (playhead.target - playhead.current) * 0.18;
+
+          const now = performance.now();
+          const timeDelta = Math.abs(video.currentTime - playhead.current);
+
+          if (timeDelta > 0.025 && now - playhead.lastSeek > 33) {
+            video.currentTime = playhead.current;
+            playhead.lastSeek = now;
+          }
+        });
 
         ScrollTrigger.create({
           trigger: ".scroll-space",
@@ -343,13 +358,7 @@
           invalidateOnRefresh: true,
           onUpdate: (self) => {
             progressBar.style.width = `${self.progress * 100}%`;
-            gsap.to(playhead, {
-              time: duration * self.progress,
-              duration: 0.32,
-              ease: "power3.out",
-              overwrite: true,
-              onUpdate: seekVideo,
-            });
+            playhead.target = duration * self.progress;
           },
         });
 
